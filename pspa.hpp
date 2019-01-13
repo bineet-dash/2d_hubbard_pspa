@@ -1,28 +1,41 @@
-#ifndef _SPA_LIBRARY_HPP_INCLUDED_
-#define _SPA_LIBRARY_HPP_INCLUDED_
+#ifndef _PSPA_HPP_INCLUDED
+#define _PSPA_HPP_INCLUDED
 
 #include <iostream>
 #include <cmath>
 #include <fstream>
+#include <lapacke.h>
+#include <vector>
 #include <Eigen/Dense>
-#include <complex>
 #include <iomanip>
 #include <string>
 #include <chrono>
-#include <lapacke.h>
 
 using namespace std;
 using namespace Eigen;
-using namespace std::literals;
 using namespace std::chrono;
 
+typedef std::complex <double> cd;
 
-typedef std::complex<double> cd;
-
-extern int size;
 extern double t;
-extern double U;
+extern double U_prime;
+extern int size;
 
+double t=1;
+double U;
+int size;
+
+inline double del(int a1, int a2){return (a1==a2)?1:0;}
+inline cd jn(cd z){return conj(z);}
+inline double Sqr(double x){return x*x;}
+inline cd filter_cd(cd x){return (abs(x)<1e-4)?0.0:x;}
+inline double filter_d(double x) {return (abs(x)<1e-4)?0.0:x;}
+inline double filter_tol_d(double x, double tolerance=1e-4) {return (abs(x)<tolerance)?0.0:x;}
+inline double fermi_fn(double e_minus_mu, double T) {return (isinf(exp(e_minus_mu/T)))? 0: 1/(exp(e_minus_mu/T)+1);}
+inline int xc(int i, int sigma=1){return (sigma==1)?floor(i/size):floor((i-size*size)/size);}
+inline int yc(int j, int sigma=1){return (sigma==1)?j%size:(j-size*size)%size;}
+inline int index(int x, int y, int sigma=1){return (sigma==1)?x*size+y:x*size+y+size*size;}
+inline int periodic(int a, int b, int lim) {int rem = (a+b)%lim; if(rem>=0) return rem; else return rem+lim;}
 
 #define IA 16807
 #define IM 2147483647
@@ -50,21 +63,7 @@ double ran0(long *idum)
 #undef IR
 #undef MASK
 
-double t=1;
-double U;
-int size;
-
-double Sqr(cd z){return norm(z);}
-double filter(double x) {if(abs(x)<1e-7) return 0.0; else return x;}
-void filter(std::vector<double>& v) {for(int i=0; i<v.size(); i++)  v[i]=filter(v[i]); }
-void filter(VectorXd& v) {for(int i=0; i<v.size(); i++)  v(i)=filter(v(i));}
-inline int xc(int i, int sigma=1){return (sigma==1)?floor(i/size):floor((i-size*size)/size);}
-inline int yc(int j, int sigma=1){return (sigma==1)?j%size:(j-size*size)%size;}
-inline int index(int x, int y, int sigma=1){return (sigma==1)?x*size+y:x*size+y+size*size;}
-inline int periodic(int a, int b, int lim) {int rem = (a+b)%lim; if(rem>=0) return rem; else return rem+lim;}
-
-
-bool diagonalize(MatrixXcd A, vector<double>& lambda)
+bool zheev_cpp(MatrixXcd& A, vector<double>& lambda, char eigenvec_choice='N')
 {
   int N = A.cols();
   int LDA = A.outerStride();
@@ -76,7 +75,8 @@ bool diagonalize(MatrixXcd A, vector<double>& lambda)
   int LWORK = int(A.size())*4;
   __complex__ double* WORK= new __complex__ double [LWORK];
   double* RWORK = new double [3*LDA];
-  zheev_( &Nchar, &Uchar, &N, reinterpret_cast <__complex__ double*> (A.data()), &LDA, w, WORK, &LWORK, RWORK, &INFO );
+
+  zheev_( &eigenvec_choice, &Uchar, &N, reinterpret_cast <__complex__ double*> (A.data()), &LDA, w, WORK, &LWORK, RWORK, &INFO );
 
   lambda.clear();
   for(int i=0; i<N; i++) lambda.push_back(w[i]);
@@ -85,31 +85,72 @@ bool diagonalize(MatrixXcd A, vector<double>& lambda)
   return INFO==0;
 }
 
-VectorXd Eigenvalues(MatrixXcd A)
+bool zgeev_cpp(MatrixXcd& A, vector<double>& lambda, char eigenvec_choice='N')
+{  
+  int N = A.cols();
+  int LDA = A.outerStride();
+  int INFO = 0;
+  __complex__ double* w = new __complex__ double [N];
+  __complex__ double* vl;
+  __complex__ double* vr;
+  char Nchar = 'N';
+  char Vchar = 'V';
+  char Uchar = 'U';
+  int LWORK = pow(2, N);
+  __complex__ double* WORK= new __complex__ double [LWORK];
+  double* RWORK = new double [LWORK];
+  
+  zgeev_(&Nchar, &eigenvec_choice, &N, reinterpret_cast <__complex__ double*> (A.data()), &LDA, w, vl, &LDA, vr, &LDA, WORK, &LWORK, RWORK, &INFO );
+
+  lambda.clear();
+  for(int i=0; i<N; i++) lambda.push_back(__real__ w[i]);
+
+  delete[] w; delete[] RWORK; delete[] WORK;
+  return INFO==0;
+}
+
+vector <double> stdEigenvalues(MatrixXcd A, bool (*diagonalization_routine)(MatrixXcd&, vector <double>&, char)=&zheev_cpp)
+{
+  std::vector<double> lambda; 
+  if(diagonalization_routine(A,lambda,'N')) return lambda;
+}
+
+VectorXd Eigenvalues(MatrixXcd A, bool (*diagonalization_routine)(MatrixXcd&, vector <double>&, char)=&zheev_cpp)
 {
   std::vector<double> lambda;
-  bool ret_value = diagonalize(A,lambda);
-  Map<ArrayXd> b(lambda.data(),lambda.size());
-  return b;
+  if(diagonalization_routine(A,lambda,'N'))
+ 	{
+		Map<ArrayXd> b(lambda.data(),lambda.size());
+  	return b;
+	}
+}
+
+MatrixXcd Eigenvectors(MatrixXcd A, bool (*diagonalization_routine)(MatrixXcd&, vector <double>&, char)=&zheev_cpp)
+{
+	std::vector<double> lambda;
+  if(diagonalization_routine(A,lambda,'V')) return A; 
+}
+
+pair<MatrixXcd, vector<double>> stdEigenspectrum(MatrixXcd A, bool (*diagonalization_routine)(MatrixXcd&, vector <double>&, char)=&zheev_cpp)
+{
+  std::vector<double> lambda;
+  if(diagonalization_routine(A,lambda,'V')) return make_pair(A,lambda);
+}
+
+pair<MatrixXcd, VectorXd> Eigenspectrum(MatrixXcd A, bool (*diagonalization_routine)(MatrixXcd&, vector <double>&, char)=&zheev_cpp)
+{
+  std::vector<double> lambda;
+  if(diagonalization_routine(A,lambda,'V'))
+ 	{
+    Map<ArrayXd> b(lambda.data(),lambda.size());
+    return make_pair(A,b);
+	}
 }
 
 void ising_sigma_generate(MatrixXd& suggested_randsigma, int lattice_index, long & idum)
 {
   if(ran0(&idum)<=0.5) suggested_randsigma(lattice_index,2) *= -1;
 }
-
-/* void sigma_generate(MatrixXd& randsigma, int i, long & idum, double T)
-{
-  double radius, u, theta;
-  // radius = (T<0.5)? 0.5+ran0(&idum): ( min(2*T,8.0)*ran0(&idum) );
-  radius = 0.5+ran0(&idum);
-  u = 2*ran0(&idum)-1;
-  theta  = 2*3.1416*ran0(&idum);
-  randsigma(i,0)= radius*sqrt(1-pow(u,2))*cos(theta); 
-  randsigma(i,1)= radius*sqrt(1-pow(u,2))*sin(theta);
-  randsigma(i,2)= radius*u;
-}
-*/
 
 MatrixXcd construct_h0_2d(void)
 {
@@ -165,6 +206,20 @@ MatrixXcd matrixelement_sigmaz_2d(MatrixXd randsigma)
   return Mcz;
 }
 
+
+double get_spi(MatrixXd sigma )
+{
+  double sq = 0.0;
+  for(int i=0; i<size*size; i++)
+  {
+    for(int j=0; j<size*size; j++)
+    {
+      sq += sigma(i,2)*sigma(j,2)*pow(-1,xc(i)-xc(j))*pow(-1,yc(i)-yc(j)) /pow(size,4);
+    }
+  }
+  return sq;
+}
+
 double get_mu(double temperature, std::vector<double> v)
 {
   sort (v.begin(), v.end());
@@ -198,43 +253,40 @@ double get_mu(double temperature, std::vector<double> v)
   }
 }
 
-double spa_free_energy(MatrixXcd Mc, double temperature)
+double get_mu(double temperature, VectorXd v)
 {
-  std::vector<double> eigenvalues;
-  diagonalize(Mc, eigenvalues);
-  sort(eigenvalues.begin(),eigenvalues.end());
-    // for(auto it=eigenvalues.begin(); it!=eigenvalues.end(); it++) cout << filter(*it) << " "; cout << endl;
-
-  double free_energy = 0; double ekt =0;
-  double mu = get_mu(temperature, eigenvalues);
-    // cout << "mu= " << mu << endl;
-
-  for(auto it=eigenvalues.begin(); it!= eigenvalues.end(); it++)
-  {
-    ekt = (*it-mu)/temperature;
-    if(!isinf(exp(-ekt))) free_energy += -temperature*log(1+exp(-ekt));
-    else  free_energy += (*it-mu);
-  }
-  //  cout << free_energy << endl;
-  return free_energy+size*size*mu;
+  vector<double> stdv (v.data(),v.data()+v.size());
+  return get_mu(temperature, stdv);
 }
+
+double spa_free_energy(Eigen::VectorXd spa_eivals, double T)
+{
+  double mu = get_mu(T, spa_eivals);
+  double beta = 1/T;
+  double spa_F = 0.0;
+  for(int i=0; i<spa_eivals.size(); i++)
+  {
+    spa_F += (-beta*(spa_eivals(i)-mu) > 4.0)?  (spa_eivals(i)-mu):-T*log(1+exp(-beta*(spa_eivals(i)-mu)));
+  }
+  return spa_F/(size*size)+mu;
+}
+
 
 double spa_internal_energy(MatrixXcd Mc, double temperature)
 {
   std::vector<double> eigenvalues;
-  diagonalize(Mc, eigenvalues);
+  zheev_cpp(Mc, eigenvalues, 'N');
   sort(eigenvalues.begin(),eigenvalues.end());
-
-  double internal_energy = 0; double ekt =0;
   double mu = get_mu(temperature, eigenvalues);
-    // cout << "mu= " << mu << endl;
 
+  double internal_energy=0.0 ; double e_min = eigenvalues.front();
   for(auto it=eigenvalues.begin(); it!= eigenvalues.end(); it++)
   {
-    internal_energy += *it/(exp((*it-mu)/temperature)+1);
+    internal_energy += (*it)/(exp((*it-mu)/temperature)+1);
   }
-  //  cout << free_energy << endl;
   return internal_energy;
 }
+
+
 
 #endif

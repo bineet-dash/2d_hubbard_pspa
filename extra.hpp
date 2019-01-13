@@ -17,7 +17,7 @@ using namespace Eigen;
 void show_eigenvalues(MatrixXcd H)
 {
   std::vector<double> eigenvalues;
-  diagonalize(H, eigenvalues);
+  zheev_cpp(H, eigenvalues);
   for(auto it=eigenvalues.begin(); it!= eigenvalues.end(); it++) cout << *it << " ";
   cout << endl << endl;
 }

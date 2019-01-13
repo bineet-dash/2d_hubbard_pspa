@@ -15,7 +15,22 @@
     "iosfwd": "cpp",
     "iomanip": "cpp",
     "slist": "cpp",
-    "dense": "cpp"
+    "dense": "cpp",
+    "cmath": "cpp",
+    "cctype": "cpp",
+    "cstddef": "cpp",
+    "cstdio": "cpp",
+    "cstdlib": "cpp",
+    "cstring": "cpp",
+    "ctime": "cpp",
+    "cwchar": "cpp",
+    "atomic": "cpp",
+    "strstream": "cpp",
+    "cstdint": "cpp",
+    "ratio": "cpp",
+    "thread": "cpp",
+    "cinttypes": "cpp",
+    "typeindex": "cpp"
   },
   "editor.minimap.enabled": false
 }

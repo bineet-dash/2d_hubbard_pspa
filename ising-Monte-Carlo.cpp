@@ -1,9 +1,5 @@
-#include "spa_library.hpp"   //contains the functions for main program.
+#include "pspa.hpp"   //contains the functions for main program.
 #include "extra.hpp"
-
-using namespace std;
-using namespace Eigen;
-using namespace std::chrono;
 
 int main(int argc, char* argv[])
 {
@@ -24,10 +20,10 @@ int main(int argc, char* argv[])
   long idum = time(NULL);
   for(int i=0; i<randsigma.rows(); i++) randsigma(i,2) = pow(1,xc(i)+yc(i)); //randsigma(i,2) = 5;
 
-  MatrixXcd H0 = construct_h0(); 
+  MatrixXcd H0 = construct_h0_2d(); 
   MatrixXcd Id = MatrixXcd::Identity(H0.rows(),H0.cols());
 
-  MatrixXcd initial_Hamiltonian = H0-U/2*matrixelement_sigmaz(randsigma)+U/4*randsigma.rows()*Id;
+  MatrixXcd initial_Hamiltonian = H0-U/2*matrixelement_sigmaz_2d(randsigma)+U/4*randsigma.rows()*Id;
   // cout << initial_Hamiltonian << endl << endl << endl;
   double free_energy = spa_free_energy(initial_Hamiltonian, final_temp);
 
@@ -54,7 +50,7 @@ int main(int argc, char* argv[])
         for(int lattice_index=0; lattice_index<size*size; lattice_index++)
         {
           ising_sigma_generate(suggested_randsigma, lattice_index, idum);
-          MatrixXcd suggested_Hamiltonian = H0-U/2*matrixelement_sigmaz(suggested_randsigma)+ U/4*randsigma.rows()*Id;
+          MatrixXcd suggested_Hamiltonian = H0-U/2*matrixelement_sigmaz_2d(suggested_randsigma)+ U/4*randsigma.rows()*Id;
           double suggested_free_energy = spa_free_energy(suggested_Hamiltonian, temperature);
 
           // debugout << suggested_free_energy << " " << free_energy << endl;
@@ -79,7 +75,7 @@ int main(int argc, char* argv[])
         for(int lattice_index=0; lattice_index<size*size; lattice_index++)
         {
           ising_sigma_generate(suggested_randsigma, lattice_index, idum);
-          MatrixXcd suggested_Hamiltonian = H0-U/2* matrixelement_sigmaz(suggested_randsigma)+U/4*randsigma.rows()*Id;
+          MatrixXcd suggested_Hamiltonian = H0-U/2* matrixelement_sigmaz_2d(suggested_randsigma)+U/4*randsigma.rows()*Id;
           double suggested_free_energy = spa_free_energy(suggested_Hamiltonian, temperature);
           // debugout << suggested_free_energy << " " << free_energy << endl;
 
