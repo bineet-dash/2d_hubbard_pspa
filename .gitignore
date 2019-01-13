@@ -1,0 +1,15 @@
+*
+!*.cpp
+!*.h
+!*.hpp
+!*.md
+!.gitignore
+!*.json
+
+!data/
+!wolframscripts/
+!.vscode/
+
+test*
+check*
+debug*

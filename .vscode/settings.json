@@ -1,0 +1,21 @@
+{
+  "files.exclude": {
+    "README.md": true,
+    "*.out":true,
+  },
+  "files.associations": {
+    "array": "cpp",
+    "initializer_list": "cpp",
+    "utility": "cpp",
+    "chrono": "cpp",
+    "limits": "cpp",
+    "ostream": "cpp",
+    "*.ipp": "cpp",
+    "iostream": "cpp",
+    "iosfwd": "cpp",
+    "iomanip": "cpp",
+    "slist": "cpp",
+    "dense": "cpp"
+  },
+  "editor.minimap.enabled": false
+}
