@@ -5,9 +5,10 @@
 !*.md
 !.gitignore
 !*.json
+!*.sh
 
-!data/
-!wolframscripts/
+!spa_mc/
+!pspa_mc/
 !.vscode/
 
 test*
