@@ -16,9 +16,10 @@ using namespace Eigen;
 using namespace std::chrono;
 
 typedef std::complex <double> cd;
+typedef pair <double,double> pdd;
 
 extern double t;
-extern double U_prime;
+extern double U;
 extern int size;
 
 double t=1;
@@ -215,7 +216,7 @@ double get_spi(MatrixXd sigma )
     for(int j=0; j<size*size; j++)
     {
       sq += sigma(i,2)*sigma(j,2)*pow(-1,xc(i)-xc(j))*pow(-1,yc(i)-yc(j)) /pow(size,4);
-    }
+    } 
   }
   return sq;
 }
@@ -268,11 +269,10 @@ double spa_free_energy(Eigen::VectorXd spa_eivals, double T)
   {
     spa_F += (-beta*(spa_eivals(i)-mu) > 4.0)?  (spa_eivals(i)-mu):-T*log(1+exp(-beta*(spa_eivals(i)-mu)));
   }
-  return spa_F/(size*size)+mu;
+  return spa_F+mu*size*size;
 }
 
-
-double spa_internal_energy(MatrixXcd Mc, double temperature)
+/* double spa_internal_energy(MatrixXcd Mc, double temperature)
 {
   std::vector<double> eigenvalues;
   zheev_cpp(Mc, eigenvalues, 'N');
@@ -284,9 +284,79 @@ double spa_internal_energy(MatrixXcd Mc, double temperature)
   {
     internal_energy += (*it)/(exp((*it-mu)/temperature)+1);
   }
-  return internal_energy;
+  return internal_energy/(size*size);
+} */
+
+double get_pspa_F(MatrixXd u, VectorXd hf, double T)
+{
+	vector <MatrixXd> vt;
+	for(int it=0; it<size*size; it++)
+	{
+		MatrixXd v_i = MatrixXd::Zero(2*size*size,2*size*size);
+		v_i(it,it) = 1; v_i(it+size*size, it+size*size) = -1;
+		MatrixXd v_i_transformed = u.adjoint()*v_i*u;
+		vt.push_back(v_i_transformed);
+	}
+
+	double mu = get_mu(T, hf);
+	VectorXd fermi_hf = VectorXd::Zero(hf.size());
+	for(int it=0; it<hf.size(); it++)
+	{
+		fermi_hf(it) = fermi_fn(hf(it)-mu,T);
+	}
+
+	int r_max = int(abs( (hf(hf.size()-1)-hf(0))/T )) ; //omega_max = (2r_max+1)*pi*T= \delta_ij_max
+	double final_det_r = 0;
+	
+	for(int matsubara_r = 0; matsubara_r < 5*r_max; matsubara_r++)
+	{
+		double omega_r = (2* matsubara_r +1)*M_PI*T;
+		MatrixXcd rpa = MatrixXcd::Identity(size*size,size*size);
+
+		milliseconds begin_ms, end_ms;
+		begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+		for(int alpha=0; alpha<size*size; alpha++)
+		{
+			for(int alpha_prime=0; alpha_prime<size*size; alpha_prime++)
+			{
+				for(int i=0; i<hf.size(); i++)
+				{
+					for(int j=0; j<hf.size(); j++)
+					{
+						cd num = U/2*(vt.at(alpha_prime))(j,i)*(vt.at(alpha))(i,j)*(fermi_hf(i)-fermi_hf(j));
+						cd denom = cd(hf(i)-hf(j),omega_r);
+						rpa(alpha,alpha_prime) += num/denom;
+					}
+				}
+			}
+		}
+		end_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+		final_det_r += log( real(rpa.determinant()) );
+	}
+
+	return T*final_det_r;
 }
 
 
+pair <double, double> get_spa_pspa_F(MatrixXd u, VectorXd spa_eivals, double temperature)
+{
+	double spa_F =  spa_free_energy(spa_eivals, temperature);
+	double pspa_F = spa_F + get_pspa_F(u, spa_eivals, temperature)/(size*size);
+	return make_pair(spa_F, pspa_F);
+}
+
+VectorXd inttobin(int theValue)
+{
+  VectorXd v(size*size);
+  for (int i = 0; i < size*size; ++i)  v(size*size-1-i) = theValue & (1 << i) ? 1 : 0;
+  return v;
+}
+
+VectorXd get_field(int i)
+{
+  VectorXd raw = inttobin(i);
+  for(int i=0; i<raw.size(); i++) raw(i) = (raw(i)==0)?-1:1;
+  return raw;
+}
 
 #endif

@@ -36,15 +36,17 @@ int main(int argc, char* argv[])
   filename="spa_mc/results_ising_spa_internal_energy_"+current_time_str()+latticedata+".txt"; ofstream outfile_data(filename);
   cout << "==============================\n"<< "filename is: " << filename << "\n========================\n";
 
+    double decrement = 0.1;
   // for(int j=final_exp; j>=initial_exp; j--)
   // {
-  //   double decrement = 0.1;
   //   // decrement = (j==-1)?0.05:1;
   //   for(double i=9; i>=1; i-= decrement)
   //   {
   //     double temperature = i*pow(10,j);
-    for(double temperature = 2.0; temperature >= 0.01; temperature -= 0.01)
+    
+    for(double temperature = 2.1; temperature >= 0.001; temperature -= decrement)
     {
+      decrement = (temperature > 0.15)?0.05:((temperature>=0.02)?0.01:0.001);
       for(int sweep=0; sweep< N_therm; sweep++)
       {
         for(int lattice_index=0; lattice_index<size*size; lattice_index++)
@@ -88,14 +90,13 @@ int main(int argc, char* argv[])
             suggested_randsigma=randsigma;
           }
         }
-        final_internal_energy += internal_energy/size*size; 
-
+        final_internal_energy += internal_energy/(size*size); 
+        magnetisation += randsigma.col(2).sum()/(size*size);     
         S_pi += get_spi(randsigma);
         cout << "\r sweep = " << sweep << " done."; cout.flush();
       }
 
-      outfile_data << temperature << " " << final_internal_energy/N_meas << " " << S_pi/N_meas << endl;
-      cout << "\rtemperature = " << temperature << " done."; cout.flush();
+      outfile_data << temperature << " " << final_internal_energy/N_meas << " " << S_pi/N_meas << " " << magnetisation/N_meas << endl;      cout << "\rtemperature = " << temperature << " done."; cout.flush();
     }
   // }
 
