@@ -30,7 +30,9 @@
     "ratio": "cpp",
     "thread": "cpp",
     "cinttypes": "cpp",
-    "typeindex": "cpp"
+    "typeindex": "cpp",
+    "fstream": "cpp",
+    "vector": "cpp"
   },
   "editor.minimap.enabled": false
 }

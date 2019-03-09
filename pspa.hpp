@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <fstream>
-#include "../lib/lapacke.h"
+#include "lib/lapacke.h"
 #include <vector>
 #include <Eigen/Dense>
 #include <iomanip>

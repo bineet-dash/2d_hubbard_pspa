@@ -1,8 +1,13 @@
 #ifndef _ALHASSID_PARALLEL_HPP_INCLUDED_
 #define _ALHASSID_PARALLEL_HPP_INCLUDED_
 
-#include "alhassid_rpa.hpp"
+#include "pspa.hpp"
+#include <chrono>
 #include <mpi.h>
+
+
+using namespace std::chrono;
+typedef Matrix <cd, Dynamic, Dynamic, RowMajor> RMatrixXcd;
 
 int NO_MC_TRIALS = 300;
 
