@@ -35,12 +35,12 @@ int main(int argc, char* argv[])
   cout << "==============================\n"<< "filename is: " << filename << "\n========================\n";
   
 
-  double final_temp = 9*pow(10,final_exp);
+  vector <double> T_range {0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.08,0.06,0.04,0.02,0.01};
+  double final_temp = T_range[0];// 9*pow(10,final_exp);
   MatrixXcd H_spa = H0-U/2*matrixelement_sigmaz_2d(randsigma)+U/4*randsigma.rows()*Id;
   pair<MatrixXcd,VectorXd> spa_spectrum = Eigenspectrum(H_spa);
   double spa_F = spa_free_energy(spa_spectrum.second, final_temp);
 
-  vector <double> T_range {0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.08,0.06,0.04,0.02,0.01};
   for(double temperature : T_range)
   {
     for(int sweep=0; sweep< N_therm; sweep++)

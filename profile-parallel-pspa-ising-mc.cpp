@@ -14,18 +14,18 @@ int main(int argc, char* argv[])
   U = atof(argv[2]);
   double temperature = atof(argv[3]);
 
-  milliseconds begin_ms, end_ms;
   long idum = time(NULL);
+  milliseconds begin_ms, end_ms;
   begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
 
   MatrixXd randsigma=MatrixXd::Zero(size*size,3);
   randsigma.col(2) = VectorXd::Constant(size*size,1);
-  for(int i=0; i<randsigma.rows(); i++) randsigma(i,2) = pow(1,xc(i)+yc(i)); //randsigma(i,2) = 5;
+  for(int i=0; i<randsigma.rows(); i++) randsigma(i,2) = pow(1,xc(i)+yc(i));
   MatrixXd suggested_randsigma = randsigma;
   MatrixXcd H0 = construct_h0_2d(); 
   MatrixXcd Id = MatrixXcd::Identity(H0.rows(),H0.cols());
 
-  MatrixXcd H_spa = H0-U/2*matrixelement_sigmaz_2d(randsigma)+U/4*randsigma.rows()*Id;
+  MatrixXcd H_spa = H0-U/2*matrixelement_sigmaz_2d(randsigma);
   pair<MatrixXcd,VectorXd> spa_spectrum = Eigenspectrum(H_spa);
   
   double spa_F = spa_free_energy(spa_spectrum.second, temperature);
@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
   if(pRank==0)
   {
     cout << spa_F/(size*size) << " " << pspa_F/(size*size) << endl;
-    cout << "Took " <<  double((end_ms-begin_ms).count())/1000.0 << " seconds. " << endl; 
+    cout << "Code took " <<  double((end_ms-begin_ms).count())/1000.0 << " seconds. " << endl; 
   }
 
   MPI_Finalize();

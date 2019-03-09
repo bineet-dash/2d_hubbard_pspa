@@ -4,6 +4,9 @@
 #include "alhassid_rpa.hpp"
 #include <mpi.h>
 
+int NO_MC_TRIALS = 300;
+
+
 double f_det(int matsubara_r, double temperature, const VectorXd& spa_eivals, const VectorXd& fermi_hf, const vector<MatrixXd>& vt)
 {
 	int L = size*size;
@@ -28,13 +31,43 @@ double f_det(int matsubara_r, double temperature, const VectorXd& spa_eivals, co
 	return 1/rpa.real().determinant();
 }
 
+double profile_f_det(int matsubara_r, double temperature, const VectorXd& spa_eivals, const VectorXd& fermi_hf, const vector<MatrixXd>& vt, int pRank)
+{
+	int L = size*size;
+	double omega_r = (2* matsubara_r +1)*M_PI*temperature;
+	MatrixXcd rpa = MatrixXcd::Identity(L,L);
+	milliseconds begin_ms, end_ms;
+  begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+
+	for(int alpha=0; alpha<L; alpha++)
+	{
+	  begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+		for(int alpha_prime=0; alpha_prime<L; alpha_prime++)
+		{
+			for(int i=0; i<spa_eivals.size(); i++)
+			{
+				for(int j=0; j<spa_eivals.size(); j++)
+				{
+					cd num = U/2*(vt.at(alpha_prime))(j,i)*(vt.at(alpha))(i,j)*(fermi_hf(i)-fermi_hf(j));
+					cd denom = cd(spa_eivals(i)-spa_eivals(j),omega_r);
+					rpa(alpha,alpha_prime) += num/denom;
+				}
+			}
+		}
+  	end_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());	
+		if(pRank==0) cout << "row " << alpha << " takes= " << double((end_ms-begin_ms).count())/1000 << endl;
+	}
+	end_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());	
+
+	return  1/rpa.real().determinant();
+}
+
 double det_sum_MC(double temperature, int r_max, const VectorXd& spa_eivals, const VectorXd& fermi_hf,  const vector <MatrixXd>& vt)
 {
 	int num_procs, my_rank;
 	MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
 	MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
 	
-	int NO_MC_TRIALS = 500;
 	srand(time(NULL)+my_rank);
 	long idum = time(NULL)+my_rank;
 	int selected_MC = 0;
@@ -97,7 +130,6 @@ double det_sum_parallel(double temperature, int r_max, const VectorXd& spa_eival
 	}
 	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 	int ierr = MPI_Reduce(&local_det_r, &final_det_r,1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	cerr << ierr << "\r"; cout.flush();
 
 	if(my_rank==0)
 	{
@@ -145,12 +177,16 @@ double pspa_free_energy(double temperature, const VectorXd& spa_eivals, const Ma
 		fermi_hf(it) = fermi_fn(spa_eivals(it)-mu, temperature);
 	}
 
+	int pRank, num_procs;
+  MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
+	MPI_Comm_rank (MPI_COMM_WORLD, &pRank);
+
 	double pspa_F = 0; 
-	if(r_max < 32)
+	if(r_max < num_procs)
 	{
 		pspa_F = det_sum_explicit(temperature, r_max, spa_eivals, fermi_hf, vt);
 	}
-	else if(r_max > 32 && r_max < 320)
+	else if(r_max > num_procs && r_max < int(NO_MC_TRIALS/3))
 	{
 		pspa_F = det_sum_parallel(temperature, r_max, spa_eivals, fermi_hf, vt);
 	}
@@ -160,6 +196,8 @@ double pspa_free_energy(double temperature, const VectorXd& spa_eivals, const Ma
 	}
 	return pspa_F;
 }
+
+
 
 double profile_pspa_free_energy(double temperature, const VectorXd& spa_eivals, const MatrixXd& u, int pRank)
 {
@@ -188,26 +226,24 @@ double profile_pspa_free_energy(double temperature, const VectorXd& spa_eivals, 
 
 	double pspa_F = 0; 
   begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+	// profile_f_det(3, temperature, spa_eivals, fermi_hf, vt, pRank);
+
 	// if(r_max < 32)
 	// {
 	// 	pspa_F = det_sum_explicit(temperature, r_max, spa_eivals, fermi_hf, vt);
 	// 	if(pRank==0){cout << "Took " <<  double((end_ms-begin_ms).count())/1000.0 << " seconds. " << "\r"; cout.flush();}
 	// }
-	if(/* r_max > 32 && */ r_max < 320)
+	if(/* r_max > 32 && */ r_max < 100)
 	{
 		pspa_F = det_sum_parallel(temperature, r_max, spa_eivals, fermi_hf, vt);
-		if(pRank==0){cout << "Took " <<  double((end_ms-begin_ms).count())/1000.0 << " seconds. " << "\r"; cout.flush();}
 	}
 	else
 	{
 		pspa_F = det_sum_MC(temperature, r_max, spa_eivals, fermi_hf, vt);
-		if(pRank==0){cout << "Took " <<  double((end_ms-begin_ms).count())/1000.0 << " seconds. " << "\r"; cout.flush();}
 	}
 
 	end_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
 	if(pRank==0) cout << "Took " <<  double((end_ms-begin_ms).count())/1000.0 << " seconds. " << endl; 
-
-
 	return pspa_F;
 }
 
