@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <fstream>
-#include <lapacke.h>
+#include "../lib/lapacke.h"
 #include <vector>
 #include <Eigen/Dense>
 #include <iomanip>
@@ -32,7 +32,7 @@ inline double Sqr(double x){return x*x;}
 inline cd filter_cd(cd x){return (abs(x)<1e-4)?0.0:x;}
 inline double filter_d(double x) {return (abs(x)<1e-4)?0.0:x;}
 inline double filter_tol_d(double x, double tolerance=1e-4) {return (abs(x)<tolerance)?0.0:x;}
-inline double fermi_fn(double e_minus_mu, double T) {return (isinf(exp(e_minus_mu/T)))? 0: 1/(exp(e_minus_mu/T)+1);}
+inline double fermi_fn(double e_minus_mu, double T) {return (std::isinf(exp(e_minus_mu/T)))? 0: 1/(exp(e_minus_mu/T)+1);}
 inline int xc(int i, int sigma=1){return (sigma==1)?floor(i/size):floor((i-size*size)/size);}
 inline int yc(int j, int sigma=1){return (sigma==1)?j%size:(j-size*size)%size;}
 inline int index(int x, int y, int sigma=1){return (sigma==1)?x*size+y:x*size+y+size*size;}
