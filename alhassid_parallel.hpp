@@ -42,7 +42,7 @@ double profile_f_det(int matsubara_r, double temperature, const VectorXd& spa_ei
 	double omega_r = (2* matsubara_r +1)*M_PI*temperature;
 	MatrixXcd rpa = MatrixXcd::Identity(L,L);
 	milliseconds begin_ms, end_ms;
-  begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+   begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
 
 	for(int alpha=0; alpha<L; alpha++)
 	{
@@ -161,7 +161,7 @@ double det_sum_explicit(double temperature, int r_max, const VectorXd& spa_eival
 	return -temperature*final_det_r;
 }
 
-double pspa_free_energy(double temperature, const VectorXd& spa_eivals, const MatrixXd& u)
+double pspa_free_energy(double temperature, const VectorXd& spa_eivals, const MatrixXd& u, double fill=1.0)
 {
 	int r_max = int(abs( (spa_eivals(spa_eivals.size()-1)-spa_eivals(0))/temperature )) ; //omega_max = (2r_max+1)*pi*T= \delta_ij_max
 	int L = size*size;
@@ -175,7 +175,7 @@ double pspa_free_energy(double temperature, const VectorXd& spa_eivals, const Ma
 		vt.push_back(v_i_transformed);
 	}
 
-	double mu = get_mu(temperature, spa_eivals);
+	double mu = get_mu(temperature, spa_eivals, fill);
 	VectorXd fermi_hf = VectorXd::Zero(spa_eivals.size());
 	for(int it=0; it< spa_eivals.size(); it++)
 	{
@@ -183,7 +183,7 @@ double pspa_free_energy(double temperature, const VectorXd& spa_eivals, const Ma
 	}
 
 	int pRank, num_procs;
-  MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
+	MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
 	MPI_Comm_rank (MPI_COMM_WORLD, &pRank);
 
 	double pspa_F = 0; 
@@ -204,10 +204,9 @@ double pspa_free_energy(double temperature, const VectorXd& spa_eivals, const Ma
 
 
 
-double profile_pspa_free_energy(double temperature, const VectorXd& spa_eivals, const MatrixXd& u, int pRank)
+double profile_pspa_free_energy(double temperature, const VectorXd& spa_eivals, const MatrixXd& u, int pRank, double fill=1.0)
 {
-  milliseconds begin_ms, end_ms;
-
+   milliseconds begin_ms, end_ms;
 	int r_max = int(abs( (spa_eivals(spa_eivals.size()-1)-spa_eivals(0))/temperature )) ; //omega_max = (2r_max+1)*pi*T= \delta_ij_max
 	int L = size*size;
 	
@@ -222,7 +221,7 @@ double profile_pspa_free_energy(double temperature, const VectorXd& spa_eivals, 
 		vt.push_back(v_i_transformed);
 	}
 
-	double mu = get_mu(temperature, spa_eivals);
+	double mu = get_mu(temperature, spa_eivals, fill);
 	VectorXd fermi_hf = VectorXd::Zero(spa_eivals.size());
 	for(int it=0; it< spa_eivals.size(); it++)
 	{
@@ -230,7 +229,7 @@ double profile_pspa_free_energy(double temperature, const VectorXd& spa_eivals, 
 	}
 
 	double pspa_F = 0; 
-  begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+   begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
 	// profile_f_det(3, temperature, spa_eivals, fermi_hf, vt, pRank);
 
 	// if(r_max < 32)

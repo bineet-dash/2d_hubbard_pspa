@@ -9,10 +9,11 @@ int main(int argc, char* argv[])
   MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
 	MPI_Comm_rank (MPI_COMM_WORLD, &pRank);
 
-  if(argc!=4) {cerr << "Enter (1) lattice size, (2) U and (3) no of sweeps.\n"; exit(1);}
+  if(argc!=5) {cerr << "Enter (1) lattice size, (2) U, (3) fill and (4) no of sweeps.\n"; exit(1);}
   size = atoi(argv[1]);
   U = atof(argv[2]);
-  int no_sweeps = atoi(argv[3]);
+  double fill = atof(argv[3]);
+  int no_sweeps = atoi(argv[4]);
   int N_therm = 0.5*no_sweeps;
   int N_meas = no_sweeps-N_therm;
 
@@ -28,7 +29,7 @@ int main(int argc, char* argv[])
   MatrixXcd H0 = construct_h0_2d(); 
   MatrixXcd Id = MatrixXcd::Identity(H0.rows(),H0.cols());
 
-  ofstream outfile_mlength, outfile_data;
+  ofstream outfile_mlength, outfile_data, outfile_dos;
   string dir_path;
   
   if(pRank==0)
@@ -47,8 +48,8 @@ int main(int argc, char* argv[])
   double final_temp = T_range[0];
   MatrixXcd H_spa = H0-U/2*matrixelement_sigmaz_2d(randsigma);
   pair<MatrixXcd,VectorXd> spa_spectrum = Eigenspectrum(H_spa);
-  double spa_F = spa_free_energy(spa_spectrum.second, final_temp);
-  double pspa_F = spa_F + pspa_free_energy(final_temp, spa_spectrum.second, spa_spectrum.first.real());
+  double spa_F = spa_free_energy(spa_spectrum.second, final_temp, fill);
+  double pspa_F = spa_F + pspa_free_energy(final_temp, spa_spectrum.second, spa_spectrum.first.real(), fill);
   
   begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
 
@@ -88,6 +89,14 @@ int main(int argc, char* argv[])
     {
       string filename = dir_path+"field_at_T_"+to_string(temperature)+".dat";
       outfile_mlength.open(filename);
+      string dos_filename = dir_path+"dos_at_T_"+to_string(temperature)+".dat";
+      outfile_dos.open(dos_filename);
+      if(outfile_mlength.bad() || outfile_mlength.bad()){cerr << "fail to create file to store aux-fields!"; exit(13);}
+    }
+    vector <pair <double, double>> dos;
+    for(double omega = -U-2*t; omega < U +2*t; omega += 0.1)
+    {
+      dos.push_back(make_pair(omega,0.0));
     }
 
     for(int sweep= N_therm; sweep<no_sweeps; sweep++)
@@ -97,8 +106,9 @@ int main(int argc, char* argv[])
         ising_sigma_generate(suggested_randsigma, lattice_index, idum);
         MatrixXcd suggested_Hspa = H0-U/2* matrixelement_sigmaz_2d(suggested_randsigma);
         pair<MatrixXcd,VectorXd> suggested_spa_spectrum = Eigenspectrum(suggested_Hspa);
-        double suggested_spa_F = spa_free_energy(suggested_spa_spectrum.second, temperature);
-        double suggested_pspa_F = suggested_spa_F + pspa_free_energy(temperature, suggested_spa_spectrum.second, suggested_spa_spectrum.first.real());
+        double suggested_spa_F = spa_free_energy(suggested_spa_spectrum.second, temperature, fill);
+        double suggested_pspa_F = suggested_spa_F 
+                                + pspa_free_energy(temperature, suggested_spa_spectrum.second, suggested_spa_spectrum.first.real(), fill);
 
         double move_prob = exp(-(suggested_pspa_F-pspa_F)/temperature);
         double uniform_rv = ran0(&idum);
@@ -126,11 +136,15 @@ int main(int argc, char* argv[])
     }
     if(pRank==0)
     {
-      outfile_mlength.close();
+      for(const auto& it: dos)
+      {
+        outfile_dos << it.first << " " << it.second/N_meas << endl;
+      }
       outfile_data << temperature << " " << final_free_energy_spa/double(N_meas) << " " << final_free_energy_rpa/double(N_meas) << " " << S_pi/double(N_meas) << endl;
+      outfile_mlength.close();
+      outfile_dos.close();
       cout << "\rtemperature = " << temperature << " done."; cout.flush();
     }
-
   }
 
   if(pRank==0)

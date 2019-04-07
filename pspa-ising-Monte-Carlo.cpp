@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
   pdd free_energies = get_spa_pspa_F(spa_spectrum.first.real(), spa_spectrum.second, final_temp);
 
   string filename, latticedata;
-  latticedata = "_U="+to_string(int(U))+"_size="+to_string(size)+"_sweeps="+to_string(no_sweeps);
+  latticedata = "U="+to_string(int(U))+"_size="+to_string(size)+"_sweeps="+to_string(no_sweeps);
   filename="pspa_mc/spin_arrangement"+current_time_str()+latticedata+".nb"; ofstream outfile_spinarr(filename);
   spinarrangement_2d_Mathematica_output(randsigma,outfile_spinarr);
   filename="pspa_mc/results_ising_spa_"+current_time_str()+latticedata+".txt"; ofstream outfile_data(filename);

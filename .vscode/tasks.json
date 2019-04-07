@@ -4,13 +4,13 @@
    "version": "2.0.0",
    "tasks": [
       {
-         "label": "build current file",
+         "label": "g++ build active file",
          "type": "shell",
          "command": "g++",
          "args": [
           "-o", 
           "\"${fileBasenameNoExtension}.out\"" ,
-          "-std=c++14", 
+          "-std=c++11", 
           "\"${fileBasenameNoExtension}.cpp\"", 
           "-llapack", 
           "-llapacke",

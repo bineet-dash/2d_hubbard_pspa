@@ -221,48 +221,118 @@ double get_spi(MatrixXd sigma )
   return sq;
 }
 
-double get_mu(double temperature, std::vector<double> v)
+double debug_get_mu(double temperature, std::vector<double> v, double reqd_fill=1.0)
 {
   sort (v.begin(), v.end());
   double bisection_up_lim = v.back();
   double bisection_low_lim = v.front();
 
-  double mu, no_of_electrons; int count=0;
+  double mu, fill; int count=0;
   double epsilon = 0.000001;
 
   for(; ;)
   {
-    no_of_electrons=0;
+    fill=0;
     mu = 0.5*(bisection_low_lim+bisection_up_lim);
 
     for(auto it = v.begin(); it!= v.end(); it++)
     {
       double fermi_func = 1/(exp((*it-mu)/temperature)+1);
-      no_of_electrons += fermi_func;
+      fill += fermi_func/(size*size);
     }
-    if(abs(no_of_electrons-size*size) < epsilon)
+    if(abs(fill-reqd_fill) < epsilon)
     {
+      cout << fill << endl;
       return mu; break;
     }
-    else if(no_of_electrons > size*size+epsilon)
+    else if(fill > reqd_fill+epsilon)
     {
-       if(abs(bisection_up_lim-v.front())<0.001){return mu; break;}
-       else {bisection_up_lim=mu;}
+      if(abs(bisection_up_lim-v.front())<0.001)
+      {
+        cout << fill << endl;
+        return mu; 
+        break;
+      }
+      else 
+      {
+        bisection_up_lim=mu;
+      }
     }
-    else if(no_of_electrons < size*size-epsilon)
-    {bisection_low_lim=mu;}
+    else if(fill < reqd_fill-epsilon)
+    { 
+      if(abs(bisection_low_lim-v.back())<0.001)
+      {
+        cout << fill << endl; 
+        return mu;
+        break;
+      }
+      else 
+      {
+        bisection_low_lim=mu;
+      }
+    }
   }
 }
 
-double get_mu(double temperature, VectorXd v)
+double get_mu(double temperature, std::vector<double> v, double reqd_fill=1.0)
 {
-  vector<double> stdv (v.data(),v.data()+v.size());
-  return get_mu(temperature, stdv);
+  sort (v.begin(), v.end());
+  double bisection_up_lim = v.back();
+  double bisection_low_lim = v.front();
+
+  double mu, fill; int count=0;
+  double epsilon = 0.000001;
+
+  for(; ;)
+  {
+    fill=0;
+    mu = 0.5*(bisection_low_lim+bisection_up_lim);
+
+    for(auto it = v.begin(); it!= v.end(); it++)
+    {
+      double fermi_func = 1/(exp((*it-mu)/temperature)+1);
+      fill += fermi_func/(size*size);
+    }
+    if(abs(fill-reqd_fill) < epsilon)
+    {
+      return mu; break;
+    }
+    else if(fill > reqd_fill+epsilon)
+    {
+      if(abs(bisection_up_lim-v.front())<0.001)
+      {
+        return mu; 
+        break;
+      }
+      else 
+      {
+        bisection_up_lim=mu;
+      }
+    }
+    else if(fill < reqd_fill-epsilon)
+    { 
+      if(abs(bisection_low_lim-v.back())<0.001)
+      {
+        return mu;
+        break;
+      }
+      else 
+      {
+        bisection_low_lim=mu;
+      }
+    }
+  }
 }
 
-double spa_free_energy(Eigen::VectorXd spa_eivals, double T)
+double get_mu(double temperature, VectorXd v, double reqd_fill=1.0)
 {
-  double mu = get_mu(T, spa_eivals);
+  vector<double> stdv (v.data(),v.data()+v.size());
+  return get_mu(temperature, stdv, reqd_fill);
+}
+
+double spa_free_energy(Eigen::VectorXd spa_eivals, double T, double fill=1.0)
+{
+  double mu = get_mu(T, spa_eivals, fill);
   double beta = 1/T;
   double spa_F = 0.0;
   for(int i=0; i<spa_eivals.size(); i++)
@@ -357,6 +427,137 @@ VectorXd get_field(int i)
   VectorXd raw = inttobin(i);
   for(int i=0; i<raw.size(); i++) raw(i) = (raw(i)==0)?-1:1;
   return raw;
+}
+
+
+VectorXd get_dos(VectorXd sorted_v, double HIST_MIN, double HIST_MAX, int no_bins, bool verbose_pref=false)
+{
+  VectorXd dos = VectorXd::Zero(no_bins);
+  double bin_spacing = (HIST_MAX-HIST_MIN)/no_bins;
+  int bin_count = 0;
+
+  for(int i=0; i< sorted_v.size(); i++)
+  {
+    double bin_max = HIST_MIN + (bin_count+1)*bin_spacing;
+    if(sorted_v(i)<bin_max)
+    {
+      dos(bin_count)++;
+    } 
+    else 
+    {
+      bin_count++;
+      dos(bin_count)++;
+    }
+  }
+
+  if(verbose_pref)
+  {
+    for(int i=0; i<no_bins; i++)
+    {
+      cout << HIST_MIN + i*bin_spacing << " -- " << HIST_MIN + (i+1)*bin_spacing << ": " << dos(i) << endl;
+    }
+  }
+
+  return dos;
+}
+
+double get_dos(double omega, const double G, const Eigen::VectorXd& eivals)
+{
+  double density = 0.0;
+  for(int i=0; i<eivals.size(); i++)
+  {
+    density += (G/2)/( pow((G/2),2) + pow((omega-eivals(i)),2) );
+  }
+  return density/M_PI;
+}
+
+void fill_dos(vector <pair <double, double>>& dos, const Eigen::MatrixXd& randsigma)
+{
+  MatrixXcd H0 = construct_h0_2d(); 
+  MatrixXcd Id = MatrixXcd::Identity(H0.rows(),H0.cols());
+  MatrixXcd H_spa = H0-U/2*matrixelement_sigmaz_2d(randsigma); //+U/4*randsigma.rows()*Id;
+  VectorXd eivals = Eigenvalues(H_spa);
+
+  double G = (eivals.maxCoeff()-eivals.minCoeff())/double(2.0*size*size);
+  for(auto& it: dos)
+  {
+    it.second += get_dos(it.first, G, eivals);
+  }
+}
+
+VectorXd ed_get_dos(const MatrixXd& randsigma, double HIST_MIN, double HIST_MAX, int no_bins, bool verbose_pref=false)
+{
+  MatrixXcd H0 = construct_h0_2d(); 
+  MatrixXcd Id = MatrixXcd::Identity(H0.rows(),H0.cols());
+  MatrixXcd H_spa = H0-U/2*matrixelement_sigmaz_2d(randsigma); //+U/4*randsigma.rows()*Id;
+  VectorXd spa_eivals = Eigenvalues(H_spa);
+
+  VectorXd dos = get_dos(spa_eivals, HIST_MIN, HIST_MAX, no_bins);
+  return dos;
+
+/*   VectorXd dos = VectorXd::Zero(no_bins);
+  double bin_spacing = (HIST_MAX-HIST_MIN)/no_bins;
+  int bin_count = 0;
+
+  for(int i=0; i< sorted_v.size(); i++)
+  {
+    double bin_max = HIST_MIN + (bin_count+1)*bin_spacing;
+    if(sorted_v(i)<bin_max)
+    {
+      dos(bin_count)++;
+    } 
+    else 
+    {
+      bin_count++;
+      dos(bin_count)++;
+    }
+  }
+
+  if(verbose_pref)
+  {
+    for(int i=0; i<no_bins; i++)
+    {
+      cout << HIST_MIN + i*bin_spacing << " -- " << HIST_MIN + (i+1)*bin_spacing << ": " << dos(i) << endl;
+    }
+  }
+
+  return dos; */
+}
+
+cd a_IJr(int Is, int Js, int r, double T, const VectorXd& spa_eivals, const VectorXd& fermi_hf, const vector <MatrixXd>& vt)
+{
+  cd  a = 0;
+  double omega_r = 2*M_PI*(r+1)*T;
+  for(int i=0; i<spa_eivals.size(); i++)
+  {
+    for(int j=0; j<spa_eivals.size(); j++)
+    {
+      a += U/2*vt.at(Is)(i,j)*vt.at(Js)(j,i)*( fermi_hf(i) - fermi_hf(j))/(spa_eivals(i)-spa_eivals(j)+ cd(0, omega_r));
+    }
+  }
+  return a;
+}
+
+cd I_ijkr(int i, int j, int k, int r, double T, const VectorXd& fermi_hf, const VectorXd& spa_eivals)
+{
+  cd I_ijk = 0;
+  double omega_r  = 2*M_PI*(r+1)*T;
+  double delta_ij = spa_eivals(i)-spa_eivals(j);
+  double delta_jk = spa_eivals(j)-spa_eivals(k);
+  double delta_ik = spa_eivals(i)-spa_eivals(k);
+
+  if(abs(spa_eivals(i)-spa_eivals(k)) > 1e-4)
+  {
+    I_ijk = fermi_hf(i)/((delta_ij-cd(0,omega_r))*delta_ik) - fermi_hf(j)/((delta_ij-cd(0,omega_r))*(delta_jk+cd(0,omega_r))) 
+          + fermi_hf(k)/(delta_ik*(delta_jk + cd(0,omega_r)));
+  }
+  else
+  {
+    I_ijk = -fermi_hf(j)/((delta_ij-cd(0,omega_r))*(delta_jk+cd(0,omega_r))) 
+            - fermi_hf(i)/(delta_ij-cd(0, omega_r))* ( (1-fermi_hf(i))/T + 1.0/(delta_ij-cd(0, omega_r) ));
+  }
+  
+  return I_ijk; 
 }
 
 #endif
