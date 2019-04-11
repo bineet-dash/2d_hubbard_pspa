@@ -206,7 +206,7 @@ double pspa_free_energy(double temperature, const VectorXd& spa_eivals, const Ma
 
 double profile_pspa_free_energy(double temperature, const VectorXd& spa_eivals, const MatrixXd& u, int pRank, double fill=1.0)
 {
-   milliseconds begin_ms, end_ms;
+	milliseconds begin_ms, end_ms;
 	int r_max = int(abs( (spa_eivals(spa_eivals.size()-1)-spa_eivals(0))/temperature )) ; //omega_max = (2r_max+1)*pi*T= \delta_ij_max
 	int L = size*size;
 	
