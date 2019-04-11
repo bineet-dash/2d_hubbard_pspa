@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
   
   if(pRank==0)
   {
-    string latticedata = "U_"+to_string(int(U))+"_size_"+to_string(size)+"_sweeps_"+to_string(no_sweeps)+"_t_"+current_time_str();
+    string latticedata = "U_"+to_string(int(U))+"_size_"+to_string(size)+"_fill_"+to_string(int(fill*100)) +"_sweeps_"+to_string(no_sweeps)+"_t_"+current_time_str();
     dir_path = "pspa_mc/"+latticedata+"/";
     string create_dir_command =  "mkdir -p "+dir_path;
     const int create_dir_result = system(create_dir_command.c_str()); 
