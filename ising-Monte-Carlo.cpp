@@ -37,8 +37,8 @@ int main(int argc, char* argv[])
   cout << "==============================\n"<< "filename is: " << data_filename << "\n========================\n";
   
 
-  vector <double> T_range;// {0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.08,0.06,0.04,0.02,0.01};
-  for(double T=1.1; T>0.0; T-= 0.05) T_range.push_back(T);
+  vector <double> T_range {0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.08,0.06,0.04,0.02,0.01};
+  // for(double T=1.1; T>0.0; T-= 0.05) T_range.push_back(T);
   
   double final_temp = T_range[0];// 9*pow(10,final_exp);
   MatrixXcd H_spa = H0-U/2*matrixelement_sigmaz_2d(randsigma); //+U/4*randsigma.rows()*Id;
