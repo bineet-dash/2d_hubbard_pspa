@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
 
   if(pRank==0) 
   {
-    cout << d_spa+d_pspa << endl;
+    cout << "D_total = " << d_spa+d_pspa << endl;
   }
 
   MPI_Finalize();
