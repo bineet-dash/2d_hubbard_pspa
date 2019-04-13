@@ -9,7 +9,7 @@
 using namespace std::chrono;
 typedef Matrix <cd, Dynamic, Dynamic, RowMajor> RMatrixXcd;
 
-int NO_MC_TRIALS = 300;
+int NO_MC_TRIALS = 200;
 
 
 double f_det(int matsubara_r, double temperature, const VectorXd& spa_eivals, const VectorXd& fermi_hf, const vector<MatrixXd>& vt)
