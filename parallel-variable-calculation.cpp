@@ -6,13 +6,12 @@ using std::cout;
 
 int main(int argc, char* argv[])
 {
-  if(argc!=5) {cerr << "Enter (1) lattice size, (2) U, (3) temperature, (4) input filename. \n"; exit(1);}
+  if(argc!=6) {cerr << "Enter (1) lattice size, (2) U, (3) temperature, (4) fill, (5) input filename. \n"; exit(1);}
   size = atoi(argv[1]);
   U = atof(argv[2]);
   double temperature = atof(argv[3]);
+  double fill = atof(argv[4]);
 
-  ifstream datain;
-  datain.open(argv[4]);
 
   MatrixXd randsigma = MatrixXd::Zero(size*size,3);
   MatrixXcd H0 = construct_h0_2d(); 
@@ -24,10 +23,19 @@ int main(int argc, char* argv[])
 	MPI_Comm_rank (MPI_COMM_WORLD, &pRank);
   srand(time(NULL));
 
+  ifstream datain;
+  if(pRank==0) datain.open(argv[5]);
+
   // while(!datain.eof())
   // {
-    int sweep; datain >> sweep;
-    for(int i=0; i<size*size; i++) datain >> randsigma(i, 2);
+    VectorXd temp_randsigma = VectorXd::Zero(size*size);
+    if(pRank == 0)
+    {
+      int sweep; datain >> sweep;
+      for(int i=0; i<size*size; i++) datain >> temp_randsigma(i);
+    }
+    
+    randsigma.col(2) = temp_randsigma;
     MatrixXcd H_spa = H0-U/2*matrixelement_sigmaz_2d(randsigma);//+U/4*randsigma.rows()*Id;
     pair<MatrixXcd,VectorXd> spa_spectrum = Eigenspectrum(H_spa);
     
@@ -40,7 +48,7 @@ int main(int argc, char* argv[])
       vt.push_back(v_i_transformed);
     }
 
-    double mu = get_mu(temperature, spa_spectrum.second);
+    double mu = get_mu(temperature, spa_spectrum.second, fill);
     VectorXd fermi_hf = VectorXd::Zero(spa_spectrum.second.size());
     for(int it=0; it< spa_spectrum.second.size(); it++)
     {
@@ -78,10 +86,10 @@ int main(int argc, char* argv[])
           }
         } 
       }
-      // milliseconds end_ms = duration_cast < milliseconds> (system_clock::now().time_since_epoch());
-      // cout << end_ms.count()- begin_ms.count() << endl;
+      milliseconds end_ms = duration_cast < milliseconds> (system_clock::now().time_since_epoch());
+      cout << end_ms.count()- begin_ms.count() << endl;
 
-      begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+      // begin_ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
       // MatrixXcd B_ki = MatrixXcd::Zero(spa_spectrum.second.size(), spa_spectrum.second.size());
 
       for(int i=0; i<spa_spectrum.second.size(); i++)

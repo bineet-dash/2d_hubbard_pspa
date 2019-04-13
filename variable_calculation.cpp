@@ -2,6 +2,7 @@
 #include "extra.hpp"
 
 
+milliseconds end_ms, begin_ms;
 
 int main(int argc, char* argv[])
 {
@@ -34,8 +35,6 @@ int main(int argc, char* argv[])
       vt.push_back(v_i_transformed);
     }
 
-
-
     double mu = get_mu(temperature, spa_spectrum.second);
     VectorXd fermi_hf = VectorXd::Zero(spa_spectrum.second.size());
     for(int it=0; it< spa_spectrum.second.size(); it++)
@@ -45,13 +44,11 @@ int main(int argc, char* argv[])
 
     cd d_pspa = 0.0;
 
-    // cout << spa_spectrum.second.size() << endl;
-
     for(int Is = 0; Is < size*size; Is++)
     {
       for(int Js = 0; Js < size*size; Js++)
       {
-
+        begin_ms = duration_cast < milliseconds> (system_clock::now().time_since_epoch());
         for(int i=0; i<spa_spectrum.second.size(); i++)
         {
           cout << "i = " << i << " started. \n";
@@ -70,10 +67,10 @@ int main(int argc, char* argv[])
             }
           }
         }
-
+        end_ms = duration_cast < milliseconds> (system_clock::now().time_since_epoch());
+        cout << "Js = " << Js << " done. \n"; 
       }
     }
-
     cout << d_pspa << endl;
     // ofstream varout("ar.dat");
     // for(int r=0; r<1000; r++)
