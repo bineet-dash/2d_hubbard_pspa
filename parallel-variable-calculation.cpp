@@ -109,13 +109,17 @@ int main(int argc, char* argv[])
 
 
     int ierr = MPI_Reduce(&local_d_pspa, &d_pspa,1, MPI_DOUBLE_COMPLEX , MPI_SUM, 0, MPI_COMM_WORLD);
-    // cout << d_pspa << endl;
-  
+    double d_spa = 0.0;
+    
+    for(int i=0; i<fermi_hf.size(); i++) 
+    {
+      d_spa += vt.at(0)(i,i)*fermi_hf(i);
+    }
   // }
 
   if(pRank==0) 
   {
-    cout << d_pspa << endl;
+    cout << d_spa+d_pspa << endl;
   }
 
   MPI_Finalize();
