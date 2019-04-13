@@ -97,7 +97,9 @@ int main(int argc, char* argv[])
 
       if(pRank==0) 
       {
-        cout << Js << " done. \r"; cout.flush();
+        ofstream update_out("update.txt");
+        update_out << Js << " done. \n"; 
+        update_out.close();
       }
 
       // end_ms = duration_cast < milliseconds> (system_clock::now().time_since_epoch());
@@ -119,7 +121,8 @@ int main(int argc, char* argv[])
 
   if(pRank==0) 
   {
-    cout << d_spa+d_pspa << endl;
+    ofstream fout("D_test.dat");
+    fout << d_spa+d_pspa << endl;
   }
 
   MPI_Finalize();
