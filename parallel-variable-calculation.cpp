@@ -95,11 +95,18 @@ int main(int argc, char* argv[])
         }
       }
 
+      if(pRank==0) 
+      {
+        cout << Js << " done. \r"; cout.flush();
+      }
+
       // end_ms = duration_cast < milliseconds> (system_clock::now().time_since_epoch());
       // cout << end_ms.count()- begin_ms.count() << endl;
       // exit(1);
       delete[] I_ijk;
     }
+
+
 
     int ierr = MPI_Reduce(&local_d_pspa, &d_pspa,1, MPI_DOUBLE_COMPLEX , MPI_SUM, 0, MPI_COMM_WORLD);
     // cout << d_pspa << endl;
